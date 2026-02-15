@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AVL Tree Visualizer</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: linear-gradient(#0f172a,#020617);
+    color: white;
+}
+
+h1 {
+    text-align: center;
+    color: #2dd4bf;
+}
+
+.controls {
+    text-align: center;
+    margin: 20px;
+}
+
+input {
+    padding: 12px;
+    width: 220px;
+    border-radius: 6px;
+    border: none;
+}
+
+button {
+    padding: 12px 18px;
+    border: none;
+    border-radius: 6px;
+    margin-left: 8px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.insert { background:#10b981; }
+.delete { background:#f59e0b; }
+.clear { background:#6b7280; }
+
+#canvas {
+    background:#1e293b;
+    height: 500px;
+    margin: 20px;
+    border-radius: 12px;
+    position: relative;
+}
+
+.node {
+    position:absolute;
+    width:40px;
+    height:40px;
+    background:#2dd4bf;
+    border-radius:50%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    color:black;
+    font-weight:bold;
+}
+
+.line {
+    position:absolute;
+    background:white;
+    height:2px;
+    transform-origin:0 0;
+}
+</style>
+</head>
+
+<body>
+
+<h1>AVL Tree Visualizer</h1>
+
+<div class="controls">
+<input id="input" placeholder="10 20 30">
+<button class="insert" onclick="insertValues()">Insert</button>
+<button class="delete" onclick="deleteValues()">Delete</button>
+<button class="clear" onclick="clearTree()">Clear</button>
+</div>
+
+<div id="canvas"></div>
+
+<script>
+class Node {
+    constructor(val){
+        this.val=val;
+        this.left=null;
+        this.right=null;
+        this.height=1;
+    }
+}
+
+class AVL {
+    height(n){ return n?n.height:0; }
+
+    balance(n){ return n?this.height(n.left)-this.height(n.right):0; }
+
+    rotateRight(y){
+        let x=y.left;
+        let T=x.right;
+        x.right=y;
+        y.left=T;
+        y.height=Math.max(this.height(y.left),this.height(y.right))+1;
+        x.height=Math.max(this.height(x.left),this.height(x.right))+1;
+        return x;
+    }
+
+    rotateLeft(x){
+        let y=x.right;
+        let T=y.left;
+        y.left=x;
+        x.right=T;
+        x.height=Math.max(this.height(x.left),this.height(x.right))+1;
+        y.height=Math.max(this.height(y.left),this.height(y.right))+1;
+        return y;
+    }
+
+    insert(root,val){
+        if(!root) return new Node(val);
+
+        if(val<root.val) root.left=this.insert(root.left,val);
+        else if(val>root.val) root.right=this.insert(root.right,val);
+        else return root;
+
+        root.height=1+Math.max(this.height(root.left),this.height(root.right));
+        let b=this.balance(root);
+
+        if(b>1 && val<root.left.val) return this.rotateRight(root);
+        if(b<-1 && val>root.right.val) return this.rotateLeft(root);
+        if(b>1 && val>root.left.val){
+            root.left=this.rotateLeft(root.left);
+            return this.rotateRight(root);
+        }
+        if(b<-1 && val<root.right.val){
+            root.right=this.rotateRight(root.right);
+            return this.rotateLeft(root);
+        }
+
+        return root;
+    }
+
+    minValue(n){
+        while(n.left) n=n.left;
+        return n;
+    }
+
+    delete(root,val){
+        if(!root) return root;
+
+        if(val<root.val) root.left=this.delete(root.left,val);
+        else if(val>root.val) root.right=this.delete(root.right,val);
+        else{
+            if(!root.left||!root.right){
+                root=root.left||root.right;
+            } else{
+                let temp=this.minValue(root.right);
+                root.val=temp.val;
+                root.right=this.delete(root.right,temp.val);
+            }
+        }
+
+        if(!root) return root;
+
+        root.height=1+Math.max(this.height(root.left),this.height(root.right));
+        let b=this.balance(root);
+
+        if(b>1 && this.balance(root.left)>=0) return this.rotateRight(root);
+        if(b>1 && this.balance(root.left)<0){
+            root.left=this.rotateLeft(root.left);
+            return this.rotateRight(root);
+        }
+        if(b<-1 && this.balance(root.right)<=0) return this.rotateLeft(root);
+        if(b<-1 && this.balance(root.right)>0){
+            root.right=this.rotateRight(root.right);
+            return this.rotateLeft(root);
+        }
+
+        return root;
+    }
+}
+
+let avl=new AVL();
+let root=null;
+
+function insertValues(){
+    let vals=document.getElementById("input").value.split(" ");
+    vals.forEach(v=>{
+        let n=parseInt(v);
+        if(!isNaN(n)) root=avl.insert(root,n);
+    });
+    draw();
+}
+
+function deleteValues(){
+    let vals=document.getElementById("input").value.split(" ");
+    vals.forEach(v=>{
+        let n=parseInt(v);
+        if(!isNaN(n)) root=avl.delete(root,n);
+    });
+    draw();
+}
+
+function clearTree(){
+    root=null;
+    draw();
+}
+
+function draw(){
+    const canvas=document.getElementById("canvas");
+    canvas.innerHTML="";
+    if(root) drawNode(root,canvas.clientWidth/2,40,canvas.clientWidth/4);
+}
+
+function drawNode(node,x,y,gap){
+    const canvas=document.getElementById("canvas");
+
+    let div=document.createElement("div");
+    div.className="node";
+    div.style.left=x-20+"px";
+    div.style.top=y-20+"px";
+    div.innerText=node.val;
+    canvas.appendChild(div);
+
+    if(node.left){
+        drawLine(x,y,x-gap,y+70);
+        drawNode(node.left,x-gap,y+70,gap/2);
+    }
+    if(node.right){
+        drawLine(x,y,x+gap,y+70);
+        drawNode(node.right,x+gap,y+70,gap/2);
+    }
+}
+
+function drawLine(x1,y1,x2,y2){
+    const canvas=document.getElementById("canvas");
+    let l=document.createElement("div");
+    l.className="line";
+    let len=Math.hypot(x2-x1,y2-y1);
+    let ang=Math.atan2(y2-y1,x2-x1)*180/Math.PI;
+    l.style.width=len+"px";
+    l.style.left=x1+"px";
+    l.style.top=y1+"px";
+    l.style.transform=`rotate(${ang}deg)`;
+    canvas.appendChild(l);
+}
+</script>
+
+</body>
+</html>
